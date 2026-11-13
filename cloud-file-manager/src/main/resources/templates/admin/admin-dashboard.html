@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Cloud File Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+
+    <nav class="bg-slate-900 text-white px-8 py-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold">Cloud File Manager | Admin</h1>
+
+        <form th:action="@{/logout}" method="post">
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg">
+                Logout
+            </button>
+        </form>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6">
+
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+            Admin Dashboard
+        </h2>
+
+        <!-- Dashboard Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+            <div class="bg-white rounded-xl shadow p-6">
+                <p class="text-gray-500">Total Users</p>
+                <p class="text-3xl font-bold text-blue-600"
+                   th:text="${stats.totalUsers}">0</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow p-6">
+                <p class="text-gray-500">Total Admins</p>
+                <p class="text-3xl font-bold text-purple-600"
+                   th:text="${stats.totalAdmins}">0</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow p-6">
+                <p class="text-gray-500">Total Uploaded Files</p>
+                <p class="text-3xl font-bold text-green-600"
+                   th:text="${stats.totalFiles}">0</p>
+            </div>
+
+        </div>
+
+        <!-- Registered Users -->
+        <section class="bg-white rounded-xl shadow p-6 mb-8">
+
+            <h3 class="text-xl font-semibold mb-4">Registered Users</h3>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600">
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Name</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Role</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Registered At</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr th:each="user : ${users}"
+                            class="border-b hover:bg-gray-50">
+
+                            <td class="p-3" th:text="${user.id}"></td>
+                            <td class="p-3" th:text="${user.fullName}"></td>
+                            <td class="p-3" th:text="${user.email}"></td>
+                            <td class="p-3" th:text="${user.role}"></td>
+
+                            <td class="p-3">
+                                <span th:if="${user.enabled}"
+                                      class="text-green-700 font-medium">Active</span>
+                                <span th:unless="${user.enabled}"
+                                      class="text-red-700 font-medium">Disabled</span>
+                            </td>
+
+                            <td class="p-3"
+                                th:text="${user.createdAt != null ? #temporals.format(user.createdAt, 'dd-MM-yyyy HH:mm') : '-'}">
+                            </td>
+
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(users)}">
+                            <td colspan="6" class="p-4 text-center text-gray-500">
+                                No registered users found.
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </section>
+
+        <!-- Uploaded Files -->
+        <section class="bg-white rounded-xl shadow p-6">
+
+            <h3 class="text-xl font-semibold mb-4">
+                Uploaded Files and Ownership
+            </h3>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600">
+                            <th class="p-3">File ID</th>
+                            <th class="p-3">File Name</th>
+                            <th class="p-3">Content Type</th>
+                            <th class="p-3">Size (Bytes)</th>
+                            <th class="p-3">Owner Name</th>
+                            <th class="p-3">Owner Email</th>
+                            <th class="p-3">Uploaded At</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr th:each="file : ${files}"
+                            class="border-b hover:bg-gray-50">
+
+                            <td class="p-3" th:text="${file.id}"></td>
+
+                            <td class="p-3 font-medium"
+                                th:text="${file.originalFileName}"></td>
+
+                            <td class="p-3"
+                                th:text="${file.contentType}"></td>
+
+                            <td class="p-3"
+                                th:text="${file.fileSize}"></td>
+
+                            <td class="p-3"
+                                th:text="${file.ownerName}"></td>
+
+                            <td class="p-3"
+                                th:text="${file.ownerEmail}"></td>
+
+                            <td class="p-3"
+                                th:text="${file.uploadedAt != null ? #temporals.format(file.uploadedAt, 'dd-MM-yyyy HH:mm') : '-'}">
+                            </td>
+
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(files)}">
+                            <td colspan="7" class="p-4 text-center text-gray-500">
+                                No uploaded files found.
+                            </td>
+                        </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</body>
+</html>
