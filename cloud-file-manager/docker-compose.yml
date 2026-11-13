@@ -1,0 +1,47 @@
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: cfm-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cloud_file_manager
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cfm-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: cloud-file-manager
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      SERVER_PORT: 8007
+      DB_URL: jdbc:mysql://mysql:3306/cloud_file_manager
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cfm-network
+
+volumes:
+  mysql_data:
+
+networks:
+  cfm-network:
+    driver: bridge
