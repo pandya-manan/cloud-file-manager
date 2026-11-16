@@ -30,11 +30,24 @@ import com.manan.cloudfilemanager.entity.FileMetaData;
 import com.manan.cloudfilemanager.repository.AppUserRepository;
 import com.manan.cloudfilemanager.service.FileMetadataService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @RestController
 @RequestMapping("/api/files")
+@Tag(
+    name = "File Management",
+    description = "APIs for uploading, retrieving, searching, downloading and deleting user files"
+)
 public class FileController {
 
     private final FileMetadataService fileMetadataService;
@@ -59,8 +72,23 @@ public class FileController {
     }
 
     // 1. Upload file
-    @PostMapping("/upload")
+    @Operation(
+        summary = "Upload a file",
+        description = "Uploads a file to Amazon S3 and stores its metadata in MySQL. The uploaded file belongs to the currently authenticated user. Maximum file size is 10 MB."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "File uploaded successfully",
+            content = @Content(schema = @Schema(implementation = FileMetadataResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid file or validation failure"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "413", description = "File exceeds the maximum allowed size")
+    })
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FileMetadataResponse> uploadFile(
+            @Parameter(
+                description = "File to upload (maximum 10 MB)",
+                required = true
+            )
             @RequestParam("file") MultipartFile file,
             Authentication authentication) throws IOException {
 
@@ -74,10 +102,22 @@ public class FileController {
     }
 
     // 2. Get all files with pagination
+    @Operation(
+        summary = "Get all files",
+        description = "Retrieves the authenticated user's files using pagination. Users can only access their own files."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Files retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @GetMapping
     public ResponseEntity<Page<FileMetadataResponse>> getAllFiles(
+            @Parameter(description = "Page number (zero-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Number of records per page", example = "10")
             @RequestParam(defaultValue = "10") int size,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
@@ -90,9 +130,20 @@ public class FileController {
     }
 
     // 3. Get file by ID
+    @Operation(
+        summary = "Get file metadata by ID",
+        description = "Retrieves metadata for a specific file owned by the authenticated user."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File metadata retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "File not found or does not belong to the user")
+    })
     @GetMapping("/{id}")
     public ResponseEntity<FileMetadataResponse> getFileById(
+            @Parameter(description = "Unique file ID", example = "1", required = true)
             @PathVariable Long id,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
@@ -106,11 +157,25 @@ public class FileController {
     }
 
     // 4. Search files with pagination
+    @Operation(
+        summary = "Search files by name",
+        description = "Searches the authenticated user's files by original filename, with pagination."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @GetMapping("/search")
     public ResponseEntity<Page<FileMetadataResponse>> searchFiles(
+            @Parameter(description = "Filename or partial filename to search for", example = "report", required = true)
             @RequestParam String name,
+
+            @Parameter(description = "Page number (zero-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Number of records per page", example = "10")
             @RequestParam(defaultValue = "10") int size,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
@@ -124,9 +189,27 @@ public class FileController {
     }
 
     // 5. Direct download
+    @Operation(
+        summary = "Download a file",
+        description = "Downloads the actual file from Amazon S3. Only the owner of the file can download it."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "File downloaded successfully",
+            content = @Content(
+                mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                schema = @Schema(type = "string", format = "binary")
+            )
+        ),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "File not found or does not belong to the user")
+    })
     @GetMapping("/{id}/download")
     public ResponseEntity<ByteArrayResource> downloadFile(
+            @Parameter(description = "Unique file ID", example = "1", required = true)
             @PathVariable Long id,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
@@ -170,9 +253,21 @@ public class FileController {
     }
 
     // 6. Generate presigned download URL
+    @Operation(
+        summary = "Generate a presigned URL",
+        description = "Generates a temporary Amazon S3 presigned URL for downloading a file. The URL is valid for 10 minutes."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Presigned URL generated successfully",
+            content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "File not found or does not belong to the user")
+    })
     @GetMapping("/{id}/presigned-url")
     public ResponseEntity<PresignedUrlResponse> generatePresignedUrl(
+            @Parameter(description = "Unique file ID", example = "1", required = true)
             @PathVariable Long id,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
@@ -186,9 +281,20 @@ public class FileController {
     }
 
     // 7. Delete file
+    @Operation(
+        summary = "Delete a file",
+        description = "Deletes the file from Amazon S3 and removes its metadata from MySQL. Only the file owner can delete it."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File deleted successfully"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "File not found or does not belong to the user")
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteFile(
+            @Parameter(description = "Unique file ID", example = "1", required = true)
             @PathVariable Long id,
+
             Authentication authentication) {
 
         Long userId = getCurrentUser(authentication).getId();
